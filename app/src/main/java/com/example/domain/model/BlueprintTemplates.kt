@@ -41,19 +41,12 @@ export const Dashboard: React.FC = () => {
     pipeline_success_rate_percentage: 99.4,
   });
   const [isTriggering, setIsTriggering] = useState(false);
-  const [events, setEvents] = useState<string[]>([]);
 
   useEffect(() => {
     fetch(`/api/v1/metrics/summary?env=${'$'}{env.toLowerCase()}`)
       .then((res) => res.json())
       .then((data: MetricsSummary) => setMetrics(data))
       .catch(console.error);
-
-    const ws = new WebSocket(`ws://${'$'}{window.location.host}/ws/telemetry`);
-    ws.onmessage = (evt) => {
-      setEvents((prev) => [evt.data, ...prev.slice(0, 19)]);
-    };
-    return () => ws.close();
   }, [env]);
 
   const handleTriggerPipeline = async () => {
@@ -72,7 +65,7 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#0F172A] text-[#F8FAFC] font-sans">
-      <Navbar environment={env} onEnvironmentChange={setEnv} role={role} onRoleChange={setRole} />
+      <Navbar environment={env} onEnvironmentChange={setEnv} />
       <Sidebar activeItem="Dashboard" />
       <main className="ml-[284px] mt-[88px] pr-6 pb-12">
         <div className="grid grid-cols-3 gap-6">
@@ -123,20 +116,125 @@ export const Dashboard: React.FC = () => {
 """.trimIndent()
         ),
         BlueprintFileArtifact(
+            path = "frontend/src/components/Navbar.tsx",
+            language = "TypeScript / React",
+            description = "Fixed 64px top navigation bar with DevOps Core logo, environment selector dropdown, and system health badge.",
+            code = """
+import React from 'react';
+
+interface NavbarProps {
+  environment: 'Production' | 'Staging' | 'Development';
+  onEnvironmentChange: (env: 'Production' | 'Staging' | 'Development') => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ environment, onEnvironmentChange }) => {
+  return (
+    <header className="fixed top-0 left-0 w-full h-[64px] bg-[#1E293B] border-b border-[#334155] flex items-center justify-between px-6 z-50">
+      <div className="flex items-center gap-6">
+        <span className="text-[20px] font-bold text-[#06B6D4]">DevOps Core</span>
+        <select
+          value={environment}
+          onChange={(e) => onEnvironmentChange(e.target.value as any)}
+          className="rounded-[6px] bg-[#0F172A] text-[#F8FAFC] px-[12px] py-[6px] border border-[#334155] text-sm"
+        >
+          <option value="Production">Production</option>
+          <option value="Staging">Staging</option>
+          <option value="Development">Development</option>
+        </select>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="w-[10px] h-[10px] rounded-full bg-[#10B981]" />
+        <span className="text-[14px] text-[#94A3B8]">All Systems Operational</span>
+      </div>
+    </header>
+  );
+};
+""".trimIndent()
+        ),
+        BlueprintFileArtifact(
+            path = "frontend/src/components/Sidebar.tsx",
+            language = "TypeScript / React",
+            description = "Fixed 260px left navigation sidebar with 4px Electric Cyan active indicator bar.",
+            code = """
+import React from 'react';
+
+const NAV_ITEMS = [
+  'Dashboard',
+  'Infrastructure (IaC)',
+  'CI/CD Pipelines',
+  'Cluster Health',
+  'FinOps Analytics',
+];
+
+export const Sidebar: React.FC<{ activeItem: string }> = ({ activeItem }) => {
+  return (
+    <aside className="fixed top-[64px] left-0 w-[260px] h-[calc(100vh-64px)] bg-[#1E293B] border-r border-[#334155] py-4">
+      <ul className="flex flex-col">
+        {NAV_ITEMS.map((item) => {
+          const active = item === activeItem;
+          return (
+            <li
+              key={item}
+              className={`px-[24px] py-[12px] text-[15px] cursor-pointer transition ${'$'}{
+                active
+                  ? 'bg-[#334155] text-white border-l-4 border-[#06B6D4] font-semibold'
+                  : 'text-[#94A3B8] hover:bg-[#334155] hover:text-white'
+              }`}
+            >
+              {item}
+            </li>
+          );
+        })}
+      </ul>
+    </aside>
+  );
+};
+""".trimIndent()
+        ),
+        BlueprintFileArtifact(
+            path = "frontend/src/components/MetricCard.tsx",
+            language = "TypeScript / React",
+            description = "Reusable KPI dashboard block matching Part 1 Section 3 specifications.",
+            code = """
+import React from 'react';
+
+interface MetricCardProps {
+  title: string;
+  value: string;
+  valueColor: string;
+  subLabel: string;
+  subLabelColor: string;
+}
+
+export const MetricCard: React.FC<MetricCardProps> = ({
+  title,
+  value,
+  valueColor,
+  subLabel,
+  subLabelColor,
+}) => {
+  return (
+    <div className="p-[24px] bg-[#1E293B] rounded-[12px] border border-[#334155]">
+      <p className="text-[14px] text-[#94A3B8]">{title}</p>
+      <p className={`text-[32px] font-bold mt-2 ${'$'}{valueColor}`}>{value}</p>
+      <p className={`text-[12px] mt-2 ${'$'}{subLabelColor}`}>{subLabel}</p>
+    </div>
+  );
+};
+""".trimIndent()
+        ),
+        BlueprintFileArtifact(
             path = "backend/app/main.py",
             language = "Python / FastAPI",
             description = "Asynchronous FastAPI engine with WebSocket telemetry, RBAC middleware, Audit Logging, and automated backups.",
             code = """
 import asyncio
-import hashlib
-from datetime import datetime, timezone
 from fastapi import FastAPI, WebSocket, Header, HTTPException, Depends
 from .schemas import (
     MetricsSummaryResponse,
     PipelineTriggerRequest,
     PipelineTriggerResponse,
     CostSimulationResponse,
-    AuditLogEntry,
 )
 from .services import DevOpsPlatformService
 
@@ -212,13 +310,48 @@ class CostSimulationResponse(BaseModel):
     proposed_infra_cost: float = Field(example=420.00)
     cost_difference: float = Field(example=25.00)
     budget_violation: bool = Field(example=False)
+""".trimIndent()
+        ),
+        BlueprintFileArtifact(
+            path = "backend/app/services.py",
+            language = "Python / AsyncIO",
+            description = "Core operational business logic for FinOps cost simulation, SHA-256 audit logging, and pipeline execution.",
+            code = """
+import hashlib
+from datetime import datetime, timezone
+from .schemas import MetricsSummaryResponse, PipelineTriggerResponse, CostSimulationResponse
 
-class AuditLogEntry(BaseModel):
-    action: str
-    actor_role: str
-    environment: str
-    sha256_hash: str
-    timestamp: str
+class DevOpsPlatformService:
+    async def fetch_metrics_summary(self, env: str) -> MetricsSummaryResponse:
+        return MetricsSummaryResponse(
+            monthly_cost=395.00,
+            cost_status="optimized",
+            security_pass=True,
+            critical_vulnerabilities=0,
+            deployment_frequency_per_day=14,
+            pipeline_success_rate_percentage=99.4,
+        )
+
+    async def launch_pipeline(self, environment: str, commit_sha: str, role: str) -> PipelineTriggerResponse:
+        return PipelineTriggerResponse(
+            pipeline_id="job_9983471",
+            status="initiated",
+            timestamp=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        )
+
+    async def run_cost_simulation(self, proposed_replicas: int) -> CostSimulationResponse:
+        current = 395.00
+        proposed = 420.00
+        return CostSimulationResponse(
+            current_infra_cost=current,
+            proposed_infra_cost=proposed,
+            cost_difference=proposed - current,
+            budget_violation=proposed > 1000.00,
+        )
+
+    async def append_audit_log(self, action: str, actor_role: str, environment: str, details: str) -> str:
+        digest = hashlib.sha256(f"{action}|{actor_role}|{environment}|{details}".encode()).hexdigest()
+        return digest[:20]
 """.trimIndent()
         ),
         BlueprintFileArtifact(

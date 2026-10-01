@@ -14,12 +14,14 @@ enum class EnvironmentType(
 
 enum class DevOpsSection(val title: String, val testTag: String) {
     DASHBOARD("Dashboard", "nav_dashboard"),
+    AI_COPILOT("AI Copilot", "nav_ai_copilot"),
     INFRASTRUCTURE("Infrastructure (IaC)", "nav_infrastructure"),
     PIPELINES("CI/CD Pipelines", "nav_pipelines"),
     CLUSTER_HEALTH("Cluster Health", "nav_cluster"),
     FINOPS("FinOps Analytics", "nav_finops"),
     SECURITY_RBAC("Security, RBAC & Audit", "nav_security_rbac"),
-    BLUEPRINT("Blueprint & API", "nav_blueprint")
+    BLUEPRINT("Blueprint & API", "nav_blueprint"),
+    SETTINGS("Settings & GitHub", "nav_settings")
 }
 
 enum class Permission(val code: String, val label: String) {
@@ -105,11 +107,11 @@ data class CostSimulationContract(
 // --- Real-Time WebSocket & Cluster Telemetry Models ---
 data class WebSocketTelemetryEvent(
     val id: String,
-    val channel: String, // ws://telemetry/k8s, ws://security/cve, ws://finops/billing, ws://gitops/sync
+    val channel: String,
     val eventType: String,
     val payload: String,
     val latencyMs: Int,
-    val severity: String, // OK, WARN, CRIT
+    val severity: String,
     val timestampFormatted: String
 )
 
@@ -123,7 +125,7 @@ data class ClusterNodeMetric(
     val activePods: Int,
     val maxPods: Int,
     val networkMbps: Int,
-    val status: String // Ready, Scaling, Cordoned
+    val status: String
 )
 
 data class LoadBenchmarkResult(
@@ -135,4 +137,15 @@ data class LoadBenchmarkResult(
     val p99LatencyMs: Double = 3.4,
     val memoryEfficiencyScore: Int = 99,
     val lastRunSummary: String = "Ready — Zero bottlenecks detected"
+)
+
+data class AiCopilotMessage(
+    val id: String,
+    val isUser: Boolean,
+    val promptTitle: String,
+    val content: String,
+    val modelTag: String,
+    val isLiveGemini: Boolean,
+    val latencyMs: Long,
+    val timestampFormatted: String
 )

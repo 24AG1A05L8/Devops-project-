@@ -29,12 +29,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.Button
@@ -109,10 +111,10 @@ fun DevOpsTopNavbar(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left: Menu Icon (on Compact) + App Logo "DevOps Core" + Environment Selector
+            // Left: Menu Icon (on Compact) + App Logo "DevOps Core"
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 if (isCompact) {
                     IconButton(
@@ -129,36 +131,38 @@ fun DevOpsTopNavbar(
                     }
                 }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(ElectricCyanDim)
+                        .border(1.dp, ElectricCyan, RoundedCornerShape(6.dp)),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(ElectricCyanDim)
-                            .border(1.dp, ElectricCyan, RoundedCornerShape(6.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Dns,
-                            contentDescription = null,
-                            tint = ElectricCyan,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Text(
-                        text = "DevOps Core",
-                        color = ElectricCyan,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        modifier = Modifier.testTag("app_logo_title")
+                    Icon(
+                        imageVector = Icons.Default.Dns,
+                        contentDescription = null,
+                        tint = ElectricCyan,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
 
-                // Environment Selector Dropdown (#0F172A bg, 6dp radius, #F8FAFC text)
+                Text(
+                    text = "DevOps Core",
+                    color = ElectricCyan,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.testTag("app_logo_title")
+                )
+            }
+
+            // Right: Environment Selector Dropdown (+ RBAC & System Health on wide screens)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Box {
                     Row(
                         modifier = Modifier
@@ -188,7 +192,8 @@ fun DevOpsTopNavbar(
                             text = selectedEnvironment.displayName,
                             color = HighContrastWhite,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
@@ -233,83 +238,16 @@ fun DevOpsTopNavbar(
                         }
                     }
                 }
-            }
 
-            // Right: RBAC Role Selector + System Health Badge
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // RBAC Role Selector Pill
-                Box {
-                    Row(
-                        modifier = Modifier
-                            .minimumInteractiveComponentSize()
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(VioletDim)
-                            .border(1.dp, VioletAccent.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
-                            .clickable { roleDropdownExpanded = true }
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                            .testTag("rbac_role_selector"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Shield,
-                            contentDescription = "Active RBAC Role",
-                            tint = VioletAccent,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Text(
-                            text = if (isCompact) currentRole.badgeCode else currentRole.roleName,
-                            color = HighContrastWhite,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = null,
-                            tint = MutedSlate,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    DropdownMenu(
-                        expanded = roleDropdownExpanded,
-                        onDismissRequest = { roleDropdownExpanded = false },
-                        modifier = Modifier
-                            .background(SlateCardSurface)
-                            .border(1.dp, SlateBorder, RoundedCornerShape(8.dp))
-                    ) {
-                        RbacRole.entries.forEach { role ->
-                            DropdownMenuItem(
-                                text = {
-                                    Column {
-                                        Text(
-                                            text = "${role.roleName} [${role.badgeCode}]",
-                                            color = if (role == currentRole) ElectricCyan else HighContrastWhite,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 13.sp
-                                        )
-                                        Text(
-                                            text = role.clearanceLevel,
-                                            color = MutedSlate,
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                },
-                                onClick = {
-                                    roleDropdownExpanded = false
-                                    onRoleSelected(role)
-                                },
-                                modifier = Modifier.testTag("role_option_${role.badgeCode}")
-                            )
-                        }
-                    }
-                }
-
-                // System Health Badge (10px Emerald circle + "All Systems Operational")
                 if (!isCompact) {
+                    RbacRoleDropdownPill(
+                        currentRole = currentRole,
+                        expanded = roleDropdownExpanded,
+                        onExpandChange = { roleDropdownExpanded = it },
+                        onRoleSelected = onRoleSelected,
+                        showFullRoleName = true
+                    )
+
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -337,12 +275,12 @@ fun DevOpsTopNavbar(
             }
         }
 
-        // Sub-strip on Compact screens so "All Systems Operational" health badge is always visible
+        // Clean 2nd bar on Compact screens so System Health & RBAC Role Selector never collide with logo
         if (isCompact) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(DeepCharcoalBg.copy(alpha = 0.65f))
+                    .background(DeepCharcoalBg.copy(alpha = 0.7f))
                     .padding(horizontal = 16.dp, vertical = 6.dp)
                     .testTag("system_health_badge"),
                 verticalAlignment = Alignment.CenterVertically,
@@ -361,19 +299,99 @@ fun DevOpsTopNavbar(
                     Text(
                         text = "All Systems Operational",
                         color = MutedSlate,
-                        fontSize = 13.sp
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(
-                    text = "RBAC: ${currentRole.roleName}",
-                    color = ElectricCyan,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
+
+                RbacRoleDropdownPill(
+                    currentRole = currentRole,
+                    expanded = roleDropdownExpanded,
+                    onExpandChange = { roleDropdownExpanded = it },
+                    onRoleSelected = onRoleSelected,
+                    showFullRoleName = false
                 )
             }
         }
 
         HorizontalDivider(thickness = 1.dp, color = SlateBorder)
+    }
+}
+
+@Composable
+private fun RbacRoleDropdownPill(
+    currentRole: RbacRole,
+    expanded: Boolean,
+    onExpandChange: (Boolean) -> Unit,
+    onRoleSelected: (RbacRole) -> Unit,
+    showFullRoleName: Boolean
+) {
+    Box {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(VioletDim)
+                .border(1.dp, VioletAccent.copy(alpha = 0.65f), RoundedCornerShape(6.dp))
+                .clickable { onExpandChange(true) }
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .testTag("rbac_role_selector"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Shield,
+                contentDescription = "Active RBAC Role",
+                tint = VioletAccent,
+                modifier = Modifier.size(14.dp)
+            )
+            Text(
+                text = if (showFullRoleName) currentRole.roleName else "RBAC: ${currentRole.badgeCode}",
+                color = HighContrastWhite,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+            Icon(
+                imageVector = Icons.Default.ArrowDropDown,
+                contentDescription = null,
+                tint = MutedSlate,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandChange(false) },
+            modifier = Modifier
+                .background(SlateCardSurface)
+                .border(1.dp, SlateBorder, RoundedCornerShape(8.dp))
+        ) {
+            RbacRole.entries.forEach { role ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(
+                                text = "${role.roleName} [${role.badgeCode}]",
+                                color = if (role == currentRole) ElectricCyan else HighContrastWhite,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp
+                            )
+                            Text(
+                                text = role.clearanceLevel,
+                                color = MutedSlate,
+                                fontSize = 11.sp
+                            )
+                        }
+                    },
+                    onClick = {
+                        onExpandChange(false)
+                        onRoleSelected(role)
+                    },
+                    modifier = Modifier.testTag("role_option_${role.badgeCode}")
+                )
+            }
+        }
     }
 }
 
@@ -393,16 +411,16 @@ fun DevOpsSidebar(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .padding(vertical = 16.dp),
+                .padding(vertical = 12.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = "CONTROL PLANE",
                     color = MutedSlate.copy(alpha = 0.7f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)
                 )
 
                 DevOpsSection.entries.forEach { section ->
@@ -416,17 +434,16 @@ fun DevOpsSidebar(
                             .testTag(section.testTag),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Left edge 4px Electric Cyan vertical bar when active
                         Box(
                             modifier = Modifier
                                 .width(4.dp)
-                                .height(48.dp)
+                                .height(44.dp)
                                 .background(if (isActive) ElectricCyan else Color.Transparent)
                         )
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -438,7 +455,7 @@ fun DevOpsSidebar(
                             )
                             Text(
                                 text = section.title,
-                                fontSize = 15.sp,
+                                fontSize = 14.sp,
                                 fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
                                 color = if (isActive) PureWhite else MutedSlate,
                                 maxLines = 1,
@@ -449,7 +466,6 @@ fun DevOpsSidebar(
                 }
             }
 
-            // Bottom Engine Metadata Card inside Sidebar
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -470,15 +486,16 @@ fun DevOpsSidebar(
                                 .background(EmeraldSafe)
                         )
                         Text(
-                            text = "FastAPI + Room Engine",
+                            text = "Live Cloud + Gemini AI",
                             color = HighContrastWhite,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
                     }
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Zero-Trust RBAC • SHA-256 Audit • Live WS Telemetry",
+                        text = "Real HTTP Probes • GitHub API • SHA-256 Audit",
                         color = MutedSlate,
                         fontSize = 11.sp
                     )
@@ -486,7 +503,6 @@ fun DevOpsSidebar(
             }
         }
 
-        // Right border 1px solid #334155
         Box(
             modifier = Modifier
                 .width(1.dp)
@@ -505,7 +521,7 @@ fun CompactSectionTabStrip(
     LazyRow(
         modifier = modifier
             .fillMaxWidth()
-                            .background(SlateCardSurface)
+            .background(SlateCardSurface)
             .padding(vertical = 8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -538,7 +554,8 @@ fun CompactSectionTabStrip(
                     text = section.title,
                     color = if (isSelected) PureWhite else MutedSlate,
                     fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    maxLines = 1
                 )
             }
         }
@@ -576,9 +593,13 @@ fun DevOpsMetricCard(
                     text = title,
                     color = MutedSlate,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
                 if (badgeText != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
@@ -589,7 +610,8 @@ fun DevOpsMetricCard(
                             text = badgeText,
                             color = EmeraldSafe,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
                     }
                 }
@@ -600,14 +622,18 @@ fun DevOpsMetricCard(
                 color = bigValueColor,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.displayLarge
+                style = MaterialTheme.typography.displayLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = subLabel,
                 color = subLabelColor,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -638,7 +664,7 @@ fun CyanActionButton(
             containerColor = if (isPressed) DarkerTeal else ElectricCyan,
             contentColor = DeepCharcoalBg
         ),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
         modifier = modifier
             .height(48.dp)
             .scale(scale)
@@ -664,7 +690,9 @@ fun CyanActionButton(
             text = text,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = DeepCharcoalBg
+            color = DeepCharcoalBg,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -689,7 +717,7 @@ fun DangerOutlineButton(
             contentColor = if (isPressed || isLoading) PureWhite else CrimsonDanger
         ),
         border = BorderStroke(2.dp, CrimsonDanger),
-        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 0.dp),
         modifier = modifier
             .height(48.dp)
             .testTag(testTag)
@@ -706,17 +734,21 @@ fun DangerOutlineButton(
             text = text,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = if (isPressed || isLoading) PureWhite else CrimsonDanger
+            color = if (isPressed || isLoading) PureWhite else CrimsonDanger,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
 
 private fun iconForSection(section: DevOpsSection): ImageVector = when (section) {
     DevOpsSection.DASHBOARD -> Icons.Default.Dashboard
+    DevOpsSection.AI_COPILOT -> Icons.Default.AutoAwesome
     DevOpsSection.INFRASTRUCTURE -> Icons.Default.Storage
     DevOpsSection.PIPELINES -> Icons.Default.AccountTree
     DevOpsSection.CLUSTER_HEALTH -> Icons.Default.Dns
     DevOpsSection.FINOPS -> Icons.Default.Analytics
     DevOpsSection.SECURITY_RBAC -> Icons.Default.Security
     DevOpsSection.BLUEPRINT -> Icons.Default.Code
+    DevOpsSection.SETTINGS -> Icons.Default.Settings
 }

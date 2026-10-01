@@ -9,7 +9,14 @@ import com.example.data.local.ComplianceControlEntity
 import com.example.data.local.DevOpsDatabase
 import com.example.data.local.IaCModuleEntity
 import com.example.data.local.PipelineRunEntity
+import com.example.data.remote.GeminiDevOpsService
+import com.example.data.remote.LiveEndpointProbe
+import com.example.data.remote.LiveGitHubRepoInfo
+import com.example.data.remote.RealDeviceHardwareTelemetry
+import com.example.data.remote.RealWorldLinkItem
+import com.example.data.remote.RealWorldLiveService
 import com.example.data.repository.DevOpsRepository
+import com.example.domain.model.AiCopilotMessage
 import com.example.domain.model.ClusterNodeMetric
 import com.example.domain.model.CostSimulationContract
 import com.example.domain.model.DevOpsSection
@@ -40,8 +47,8 @@ data class DevOpsUiState(
     val isDeployingInfra: Boolean = false,
     val isTearingDown: Boolean = false,
     val isWebSocketLive: Boolean = true,
-    val webSocketEndpointStatus: String = "Connected • ws://devops-core.internal/ws/telemetry",
-    val customWsUrl: String = "wss://echo.websocket.org",
+    val webSocketEndpointStatus: String = "Connected • Real-Time Live Telemetry Engine",
+    val customWsUrl: String = "wss://echo.websocket.events",
     val isAutoBackupEnabled: Boolean = true,
     val statusBannerMessage: String? = null,
     val isBannerError: Boolean = false,
@@ -61,7 +68,41 @@ data class DevOpsUiState(
     val benchmarkResult: LoadBenchmarkResult = LoadBenchmarkResult(),
     // Audit Log Filter
     val auditSearchQuery: String = "",
-    val selectedAuditCategory: String = "ALL"
+    val selectedAuditCategory: String = "ALL",
+    // Gemini AI Copilot State
+    val selectedGeminiModel: String = "gemini-3.5-flash",
+    val aiPromptInput: String = "",
+    val isAiGenerating: Boolean = false,
+    val aiMessages: List<AiCopilotMessage> = defaultAiMessages(),
+    // Real-World Live Probes, GitHub API & Hardware Telemetry
+    val isProbingLiveEndpoints: Boolean = false,
+    val customHttpProbeUrl: String = "https://api.github.com/zen",
+    val liveEndpointProbes: List<LiveEndpointProbe> = emptyList(),
+    val githubRepoSlugInput: String = "tiangolo/fastapi",
+    val isFetchingGitHubRepo: Boolean = false,
+    val liveGitHubRepo: LiveGitHubRepoInfo? = null,
+    val realDeviceTelemetry: RealDeviceHardwareTelemetry? = null,
+    val essentialLinks: List<RealWorldLinkItem> = emptyList()
+)
+
+private fun defaultAiMessages(): List<AiCopilotMessage> = listOf(
+    AiCopilotMessage(
+        id = "ai-init-1",
+        isUser = false,
+        promptTitle = "DevOps Core AI Architect Ready",
+        content = """
+### Autonomous DevSecOps & FinOps Copilot Online
+- **Baseline Spend**: `$395.00/mo` (60% under Production `$1,000.00` cap)
+- **Security Posture**: `0 Critical CVEs` • `SOC2 / ISO 27001 / CIS K8s` Verified
+- **Models Available**: `gemini-3.5-flash` (Fast SRE Telemetry) & `gemini-3.1-pro-preview` (Deep IaC & K8s Reasoning)
+
+Tap any 1-click diagnostic chip above or enter a custom DevOps, Terraform, Kubernetes, or FinOps prompt below.
+        """.trimIndent(),
+        modelTag = "gemini-3.5-flash",
+        isLiveGemini = false,
+        latencyMs = 12L,
+        timestampFormatted = "Ready"
+    )
 )
 
 private fun defaultClusterNodes(): List<ClusterNodeMetric> = listOf(
@@ -119,8 +160,15 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
 
     private val repository: DevOpsRepository =
         DevOpsRepository(DevOpsDatabase.getInstance(application).devOpsDao())
+    private val geminiService = GeminiDevOpsService()
+    private val realWorldService = RealWorldLiveService()
 
-    private val _uiState = MutableStateFlow(DevOpsUiState())
+    private val _uiState = MutableStateFlow(
+        DevOpsUiState(
+            essentialLinks = realWorldService.essentialRealWorldLinks,
+            realDeviceTelemetry = realWorldService.readRealDeviceTelemetry(application)
+        )
+    )
     val uiState: StateFlow<DevOpsUiState> = _uiState.asStateFlow()
 
     val allIaCModules: StateFlow<List<IaCModuleEntity>> = repository.allIaCModules
@@ -138,7 +186,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
     val complianceControls: StateFlow<List<ComplianceControlEntity>> = repository.complianceControls
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    // Derived MetricsSummaryContract matching GET /api/v1/metrics/summary
     val currentMetricsSummary: StateFlow<MetricsSummaryContract> = combine(
         _uiState,
         allIaCModules,
@@ -174,7 +221,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         MetricsSummaryContract()
     )
 
-    // Derived CostSimulationContract matching GET /api/v1/infrastructure/cost-simulation
     val costSimulationContract: StateFlow<CostSimulationContract> = combine(
         _uiState,
         currentMetricsSummary
@@ -200,86 +246,97 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             repository.ensureSeeded()
             seedInitialWebSocketEvents()
+            refreshRealWorldProbes()
+            fetchLiveGitHubRepoInfo()
             startRealTimeTelemetryLoop()
         }
     }
 
     private fun seedInitialWebSocketEvents() {
         val now = System.currentTimeMillis()
+        val hw = realWorldService.readRealDeviceTelemetry(getApplication())
         val initialEvents = listOf(
             WebSocketTelemetryEvent(
                 id = "evt-104",
+                channel = "sys://hardware/kernel",
+                eventType = "REAL_DEVICE_METRICS",
+                payload = "${hw.deviceModel} • ${hw.cpuCores} Cores • RAM ${hw.ramUsagePercent}% (${hw.systemAvailableRamMb}MB free)",
+                latencyMs = 1,
+                severity = "OK",
+                timestampFormatted = DevOpsRepository.formatTimestamp(now - 1000)
+            ),
+            WebSocketTelemetryEvent(
+                id = "evt-103",
                 channel = "ws://gitops/argocd",
                 eventType = "SYNC_HEALTHY",
                 payload = "Application devops-core-engine synced to sha-a1b2c3d (0 drift)",
                 latencyMs = 4,
                 severity = "OK",
-                timestampFormatted = DevOpsRepository.formatTimestamp(now - 2000)
+                timestampFormatted = DevOpsRepository.formatTimestamp(now - 4000)
             ),
             WebSocketTelemetryEvent(
-                id = "evt-103",
+                id = "evt-102",
                 channel = "ws://security/trivy",
                 eventType = "CVE_SCAN_PASS",
                 payload = "Scanned 4 container images in Production: 0 Critical, 0 High CVEs",
                 latencyMs = 6,
                 severity = "OK",
-                timestampFormatted = DevOpsRepository.formatTimestamp(now - 5000)
+                timestampFormatted = DevOpsRepository.formatTimestamp(now - 8000)
             ),
             WebSocketTelemetryEvent(
-                id = "evt-102",
+                id = "evt-101",
                 channel = "ws://finops/cost-guard",
                 eventType = "BUDGET_CHECK",
                 payload = "Projected spend $395.00/mo is 60.5% under $1,000.00 quota",
                 latencyMs = 3,
                 severity = "OK",
-                timestampFormatted = DevOpsRepository.formatTimestamp(now - 9000)
-            ),
-            WebSocketTelemetryEvent(
-                id = "evt-101",
-                channel = "ws://rbac/policy",
-                eventType = "ZERO_TRUST_ENFORCED",
-                payload = "mTLS + RBAC token verified for session ROOT-SRE",
-                latencyMs = 2,
-                severity = "OK",
-                timestampFormatted = DevOpsRepository.formatTimestamp(now - 14000)
+                timestampFormatted = DevOpsRepository.formatTimestamp(now - 12000)
             )
         )
-        _uiState.update { it.copy(telemetryStream = initialEvents) }
+        _uiState.update { it.copy(telemetryStream = initialEvents, realDeviceTelemetry = hw) }
     }
 
     private fun startRealTimeTelemetryLoop() {
         viewModelScope.launch {
             var tick = 105
             while (true) {
-                delay(2600L)
+                delay(2800L)
                 val state = _uiState.value
                 if (!state.isWebSocketLive) continue
 
                 tick++
+                val hw = realWorldService.readRealDeviceTelemetry(getApplication())
                 val env = state.selectedEnvironment.displayName
-                val cpuNext = (36 + Random.nextInt(0, 16)).toFloat()
-                val memNext = (52 + Random.nextInt(0, 11)).toFloat()
+                val cpuNext = (34 + (hw.jvmUsedMemoryMb % 24).toInt() + Random.nextInt(0, 10))
+                    .toFloat()
+                    .coerceIn(22f, 92f)
+                val memNext = hw.ramUsagePercent.toFloat().coerceIn(30f, 95f)
 
+                val probeLatest = state.liveEndpointProbes.firstOrNull()
                 val sampleEvents = listOf(
                     Triple(
-                        "ws://telemetry/k8s",
-                        "HPA_HEARTBEAT",
-                        "[$env] 4/4 nodes Ready • CPU ${cpuNext.toInt()}% • Mem ${memNext.toInt()}% • p99 2.1ms"
+                        "sys://device/runtime",
+                        "REAL_JVM_MEMORY",
+                        "JVM Heap: ${hw.jvmUsedMemoryMb}/${hw.jvmMaxMemoryMb}MB • Device RAM: ${hw.ramUsagePercent}% • Uptime: ${hw.uptimeMinutes}m"
+                    ),
+                    Triple(
+                        "https://cloud/probe",
+                        "LIVE_HTTP_PING",
+                        if (probeLatest != null) {
+                            "${probeLatest.name}: ${probeLatest.liveDetail} (${probeLatest.latencyMs}ms)"
+                        } else {
+                            "[$env] 4/4 K8s nodes Ready • CPU ${cpuNext.toInt()}% • Mem ${memNext.toInt()}%"
+                        }
                     ),
                     Triple(
                         "ws://security/cve",
                         "RUNTIME_FALCO_OK",
-                        "[$env] eBPF syscall monitor: 0 unauthorized privilege escalations"
-                    ),
-                    Triple(
-                        "ws://finops/billing",
-                        "COST_METRIC_TICK",
-                        "[$env] Spot/On-Demand blended hourly burn rate optimal"
+                        "[$env] Zero-Trust RBAC (${state.currentRole.badgeCode}) • 0 unauthorized syscalls"
                     ),
                     Triple(
                         "ws://gitops/sync",
                         "STATE_RECONCILED",
-                        "[$env] Terraform state lock verified • SHA-256 digest matched"
+                        "[$env] Room DB + Terraform state SHA-256 digest verified"
                     )
                 )
                 val chosen = sampleEvents[tick % sampleEvents.size]
@@ -288,7 +345,7 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
                     channel = chosen.first,
                     eventType = chosen.second,
                     payload = chosen.third,
-                    latencyMs = Random.nextInt(2, 8),
+                    latencyMs = Random.nextInt(1, 7),
                     severity = "OK",
                     timestampFormatted = DevOpsRepository.formatTimestamp(System.currentTimeMillis())
                 )
@@ -304,12 +361,65 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
                         )
                     }
                     current.copy(
+                        realDeviceTelemetry = hw,
                         telemetryStream = (listOf(newEvent) + current.telemetryStream).take(30),
                         cpuHistorySeries = (current.cpuHistorySeries.drop(1) + cpuNext),
                         memoryHistorySeries = (current.memoryHistorySeries.drop(1) + memNext),
                         clusterNodes = updatedNodes
                     )
                 }
+            }
+        }
+    }
+
+    // --- Real-World Live HTTP Probes & GitHub API ---
+    fun updateCustomHttpProbeUrl(url: String) {
+        _uiState.update { it.copy(customHttpProbeUrl = url) }
+    }
+
+    fun refreshRealWorldProbes() {
+        if (_uiState.value.isProbingLiveEndpoints) return
+        val customUrl = _uiState.value.customHttpProbeUrl
+        _uiState.update { it.copy(isProbingLiveEndpoints = true) }
+
+        viewModelScope.launch {
+            val nowFormatted = DevOpsRepository.formatTimestamp(System.currentTimeMillis())
+            val results = realWorldService.runLiveWorldProbes(customUrl, nowFormatted)
+            val hw = realWorldService.readRealDeviceTelemetry(getApplication())
+            _uiState.update {
+                it.copy(
+                    isProbingLiveEndpoints = false,
+                    liveEndpointProbes = results,
+                    realDeviceTelemetry = hw
+                )
+            }
+        }
+    }
+
+    fun updateGitHubRepoSlugInput(slug: String) {
+        _uiState.update { it.copy(githubRepoSlugInput = slug) }
+    }
+
+    fun fetchLiveGitHubRepoInfo(syncCommitToPipeline: Boolean = false) {
+        if (_uiState.value.isFetchingGitHubRepo) return
+        val slug = _uiState.value.githubRepoSlugInput.ifBlank { "tiangolo/fastapi" }
+        _uiState.update { it.copy(isFetchingGitHubRepo = true) }
+
+        viewModelScope.launch {
+            val info = realWorldService.fetchLiveGitHubRepository(slug)
+            _uiState.update { current ->
+                current.copy(
+                    isFetchingGitHubRepo = false,
+                    liveGitHubRepo = info,
+                    commitShaInput = if (syncCommitToPipeline) info.latestCommitSha else current.commitShaInput,
+                    branchInput = if (syncCommitToPipeline) info.defaultBranch else current.branchInput,
+                    statusBannerMessage = if (syncCommitToPipeline) {
+                        "Synced real GitHub commit ${info.latestCommitSha.take(8)} from ${info.fullName} (${info.defaultBranch})"
+                    } else {
+                        current.statusBannerMessage
+                    },
+                    isBannerError = false
+                )
             }
         }
     }
@@ -386,16 +496,12 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         _uiState.update { it.copy(auditSearchQuery = query) }
     }
 
-    fun selectAuditCategory(category: String) {
-        _uiState.update { it.copy(selectedAuditCategory = category) }
-    }
-
     fun toggleWebSocketLive(enabled: Boolean) {
         _uiState.update {
             it.copy(
                 isWebSocketLive = enabled,
                 webSocketEndpointStatus = if (enabled) {
-                    "Connected • ws://devops-core.internal/ws/telemetry"
+                    "Connected • Real-Time Live Telemetry Engine"
                 } else {
                     "Paused • Manual Inspection Mode"
                 }
@@ -431,7 +537,91 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         )
     }
 
-    // --- Enforce RBAC helper ---
+    // --- Gemini AI Copilot Actions ---
+    fun selectGeminiModel(model: String) {
+        _uiState.update { it.copy(selectedGeminiModel = model) }
+    }
+
+    fun updateAiPromptInput(text: String) {
+        _uiState.update { it.copy(aiPromptInput = text) }
+    }
+
+    fun askAiCopilot(customPrompt: String? = null) {
+        val state = _uiState.value
+        if (state.isAiGenerating) return
+        val prompt = (customPrompt ?: state.aiPromptInput).trim()
+        if (prompt.isEmpty()) return
+
+        val nowStr = DevOpsRepository.formatTimestamp(System.currentTimeMillis())
+        val userMsg = AiCopilotMessage(
+            id = "usr-${System.currentTimeMillis()}",
+            isUser = true,
+            promptTitle = "Operator Query (${state.currentRole.badgeCode})",
+            content = prompt,
+            modelTag = state.selectedGeminiModel,
+            isLiveGemini = true,
+            latencyMs = 0L,
+            timestampFormatted = nowStr
+        )
+
+        _uiState.update {
+            it.copy(
+                isAiGenerating = true,
+                aiPromptInput = if (customPrompt == null) "" else it.aiPromptInput,
+                aiMessages = listOf(userMsg) + it.aiMessages
+            )
+        }
+
+        viewModelScope.launch {
+            val env = state.selectedEnvironment
+            val summary = currentMetricsSummary.value
+            val sim = costSimulationContract.value
+            val envModules = allIaCModules.value.filter { it.environment == env.displayName }
+            val modulesSummary = envModules.joinToString(", ") {
+                "${it.moduleName} (${it.status}, ${it.replicas}x, $${it.monthlyCostUsd}/mo)"
+            }.ifBlank { "4 Production Modules ($395.00/mo)" }
+
+            val result = geminiService.generateDevOpsInsight(
+                userPrompt = prompt,
+                modelId = state.selectedGeminiModel,
+                environmentName = env.displayName,
+                monthlyCost = summary.monthly_cost,
+                proposedCost = sim.proposed_infra_cost,
+                deployFrequency = summary.deployment_frequency_per_day,
+                successRate = summary.pipeline_success_rate_percentage,
+                activeRole = state.currentRole.roleName,
+                modulesSummary = modulesSummary
+            )
+
+            val aiReply = AiCopilotMessage(
+                id = "ai-${System.currentTimeMillis()}",
+                isUser = false,
+                promptTitle = "AI DevSecOps Copilot Analysis",
+                content = result.responseText,
+                modelTag = result.modelUsed,
+                isLiveGemini = result.isLiveApi,
+                latencyMs = result.latencyMs,
+                timestampFormatted = DevOpsRepository.formatTimestamp(System.currentTimeMillis())
+            )
+
+            repository.recordAuditLog(
+                action = "AI_COPILOT_CONSULTATION",
+                category = "SECURITY",
+                actorRole = state.currentRole.roleName,
+                environment = env.displayName,
+                severity = "INFO",
+                details = "Evaluated prompt '${prompt.take(48)}' via ${state.selectedGeminiModel} (${result.latencyMs}ms)."
+            )
+
+            _uiState.update {
+                it.copy(
+                    isAiGenerating = false,
+                    aiMessages = listOf(aiReply) + it.aiMessages
+                )
+            }
+        }
+    }
+
     private fun checkPermissionOrAuditDeny(permission: Permission, actionName: String): Boolean {
         val state = _uiState.value
         val role = state.currentRole
@@ -457,7 +647,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         return false
     }
 
-    // --- Action 1: Trigger CI/CD Pipeline (Part 3 Contract #2) ---
     fun triggerPipeline() {
         if (!checkPermissionOrAuditDeny(Permission.TRIGGER_PIPELINE, "Trigger Pipeline")) return
         if (_uiState.value.isPipelineRunning) return
@@ -551,7 +740,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Action 2: Deploy / Apply Simulated Infrastructure Change ---
     fun deploySimulatedInfrastructure() {
         if (!checkPermissionOrAuditDeny(Permission.PROVISION_INFRA, "Deploy Infrastructure")) return
         if (_uiState.value.isDeployingInfra) return
@@ -619,7 +807,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Action 3: Teardown Non-Essential / Ephemeral Resources (with Auto Safety Backup!) ---
     fun teardownResources() {
         if (!checkPermissionOrAuditDeny(Permission.TEARDOWN_INFRA, "Teardown Resources")) return
         if (_uiState.value.isTearingDown) return
@@ -636,7 +823,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
 
         viewModelScope.launch {
-            // Automatically capture a pre-teardown backup snapshot for reliability!
             val snap = repository.createBackupSnapshot(
                 environment = env,
                 triggerType = "PRE_TEARDOWN_GUARD",
@@ -683,7 +869,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Action 4: Reset / Restore Baseline $395.00 Optimized State ---
     fun restoreOptimizedBaseline() {
         if (!checkPermissionOrAuditDeny(Permission.OPTIMIZE_FINOPS, "FinOps Right-Sizing")) return
         val state = _uiState.value
@@ -724,7 +909,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Action 5: Automated & Manual Backups ---
     fun toggleAutoBackup(enabled: Boolean) {
         _uiState.update { it.copy(isAutoBackupEnabled = enabled) }
         viewModelScope.launch {
@@ -771,7 +955,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Action 6: Compliance Scan & Remediation ---
     fun runComplianceAuditScan() {
         if (!checkPermissionOrAuditDeny(Permission.REMEDIATE_COMPLIANCE, "Run Compliance Scan")) return
         val state = _uiState.value
@@ -802,7 +985,6 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    // --- Action 7: High-Load Stress Test & Async Database Benchmark ---
     fun runHighLoadBenchmark() {
         if (!checkPermissionOrAuditDeny(Permission.STRESS_TEST_CLUSTER, "Run High-Load Benchmark")) return
         if (_uiState.value.benchmarkResult.isRunning) return
@@ -824,9 +1006,11 @@ class DevOpsViewModel(application: Application) : AndroidViewModel(application) 
                 batchSize = 180
             )
             delay(350L)
+            val hw = realWorldService.readRealDeviceTelemetry(getApplication())
             _uiState.update { current ->
                 val newTotal = current.benchmarkResult.totalTransactionsProcessed + 180
                 current.copy(
+                    realDeviceTelemetry = hw,
                     benchmarkResult = LoadBenchmarkResult(
                         isRunning = false,
                         concurrentWorkers = 64,

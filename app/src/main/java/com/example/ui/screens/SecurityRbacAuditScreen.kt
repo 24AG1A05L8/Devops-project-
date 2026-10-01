@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,7 +26,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.AuditLogEntity
@@ -66,7 +68,6 @@ import com.example.ui.theme.MutedSlate
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SlateBorder
 import com.example.ui.theme.SlateCardSurface
-import com.example.ui.theme.VioletAccent
 import com.example.ui.theme.VioletDim
 import com.example.ui.viewmodel.DevOpsUiState
 import java.util.Locale
@@ -88,10 +89,10 @@ fun SecurityRbacAuditScreen(
 ) {
     var selectedSubTab by remember { mutableIntStateOf(0) }
     val subTabs = listOf(
-        "RBAC & Access Control",
-        "Compliance & Security",
-        "Immutable Audit Logs (${auditLogs.size})",
-        "Automated Backups (${backups.size})"
+        "RBAC Roles",
+        "Compliance",
+        "Audit Logs (${auditLogs.size})",
+        "Backups (${backups.size})"
     )
     val scrollState = rememberScrollState()
 
@@ -102,7 +103,6 @@ fun SecurityRbacAuditScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Sub-Tab Selector Bar
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -125,7 +125,8 @@ fun SecurityRbacAuditScreen(
                         text = title,
                         color = if (isSelected) DeepCharcoalBg else HighContrastWhite,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1
                     )
                 }
             }
@@ -212,7 +213,9 @@ private fun RbacGovernancePanel(
                                 text = role.roleName,
                                 color = if (isSelected) ElectricCyan else HighContrastWhite,
                                 fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Box(
                                 modifier = Modifier
@@ -224,22 +227,25 @@ private fun RbacGovernancePanel(
                                     text = role.badgeCode,
                                     color = PureWhite,
                                     fontSize = 10.sp,
-                                    fontFamily = JetBrainsMonoFontFamily
+                                    fontFamily = JetBrainsMonoFontFamily,
+                                    maxLines = 1
                                 )
                             }
                         }
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${role.clearanceLevel} • ${role.permissions.size}/${Permission.entries.size} permissions granted",
+                            text = "${role.clearanceLevel} • ${role.permissions.size}/${Permission.entries.size} permissions",
                             color = MutedSlate,
                             fontSize = 12.sp
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isSelected) "ACTIVE SESSION" else "SWITCH ROLE",
+                        text = if (isSelected) "ACTIVE" else "SWITCH",
                         color = if (isSelected) EmeraldSafe else ElectricCyan,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1
                     )
                 }
             }
@@ -263,12 +269,14 @@ private fun RbacGovernancePanel(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = perm.label,
                             color = HighContrastWhite,
                             fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = perm.code,
@@ -284,13 +292,15 @@ private fun RbacGovernancePanel(
                         Icon(
                             imageVector = if (allowed) Icons.Default.CheckCircle else Icons.Default.Lock,
                             contentDescription = null,
-                            tint = if (allowed) EmeraldSafe else CrimsonDanger
+                            tint = if (allowed) EmeraldSafe else CrimsonDanger,
+                            modifier = Modifier.size(16.dp)
                         )
                         Text(
                             text = if (allowed) "ALLOWED" else "DENIED",
                             color = if (allowed) EmeraldSafe else CrimsonDanger,
                             fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
                     }
                 }
@@ -316,32 +326,25 @@ private fun ComplianceMonitoringPanel(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Continuous Security Monitoring & Compliance Reporting",
-                        color = HighContrastWhite,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "SOC2 Type II • ISO 27001 • CIS Kubernetes v1.8 • NIST 800-53 (100% Compliant)",
-                        color = EmeraldSafe,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                CyanActionButton(
-                    text = "Run Compliance Audit",
-                    onClick = onRunComplianceScan,
-                    icon = Icons.Default.Security,
-                    testTag = "run_compliance_scan_button"
-                )
-            }
+            Text(
+                text = "Continuous Security Monitoring & Compliance Reporting",
+                color = HighContrastWhite,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "SOC2 Type II • ISO 27001 • CIS Kubernetes v1.8 • NIST 800-53 (100% Compliant)",
+                color = EmeraldSafe,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+
+            CyanActionButton(
+                text = "Run Full Compliance Audit Scan",
+                onClick = onRunComplianceScan,
+                icon = Icons.Default.Security,
+                testTag = "run_compliance_scan_button"
+            )
 
             controls.forEach { ctrl ->
                 Column(
@@ -358,24 +361,20 @@ private fun ComplianceMonitoringPanel(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(ElectricCyanDim)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(ElectricCyanDim)
-                                    .padding(horizontal = 8.dp, vertical = 3.dp)
-                            ) {
-                                Text(
-                                    text = "${ctrl.framework} • ${ctrl.controlCode}",
-                                    color = ElectricCyan,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = JetBrainsMonoFontFamily
-                                )
-                            }
+                            Text(
+                                text = "${ctrl.framework} • ${ctrl.controlCode}",
+                                color = ElectricCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = JetBrainsMonoFontFamily,
+                                maxLines = 1
+                            )
                         }
                         Box(
                             modifier = Modifier
@@ -387,7 +386,8 @@ private fun ComplianceMonitoringPanel(
                                 text = ctrl.status,
                                 color = EmeraldSafe,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                     }
@@ -473,23 +473,16 @@ private fun ImmutableAuditLogPanel(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(
-                                text = log.action,
-                                color = if (log.severity == "WARNING") AmberWarning else ElectricCyan,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontFamily = JetBrainsMonoFontFamily
-                            )
-                            Text(
-                                text = "• ${log.environment}",
-                                color = MutedSlate,
-                                fontSize = 12.sp
-                            )
-                        }
+                        Text(
+                            text = "${log.action} • ${log.environment}",
+                            color = if (log.severity == "WARNING") AmberWarning else ElectricCyan,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = JetBrainsMonoFontFamily,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
                         Text(
                             text = DevOpsRepository.formatTimestamp(log.timestamp),
                             color = MutedSlate,
@@ -509,10 +502,13 @@ private fun ImmutableAuditLogPanel(
                         Text(
                             text = "Actor: ${log.actorRole} [${log.category}]",
                             color = MutedSlate,
-                            fontSize = 11.sp
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                         Text(
-                            text = "SHA-256: ${log.sha256Hash}",
+                            text = "SHA-256: ${log.sha256Hash.take(12)}",
                             color = EmeraldSafe,
                             fontSize = 11.sp,
                             fontFamily = JetBrainsMonoFontFamily
@@ -544,31 +540,24 @@ private fun AutomatedBackupsPanel(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Automated Point-in-Time Backups & Disaster Recovery",
-                        color = HighContrastWhite,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Every state snapshot is verified with a SHA-256 checksum and can restore full IaC module state in 1 click.",
-                        color = MutedSlate,
-                        fontSize = 12.sp
-                    )
-                }
-                CyanActionButton(
-                    text = "Create Snapshot",
-                    onClick = onCreateBackup,
-                    icon = Icons.Default.Backup,
-                    testTag = "create_backup_snapshot_button"
-                )
-            }
+            Text(
+                text = "Automated Point-in-Time Backups & Disaster Recovery",
+                color = HighContrastWhite,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Every state snapshot is verified with a SHA-256 checksum and can restore full IaC module state in 1 click.",
+                color = MutedSlate,
+                fontSize = 12.sp
+            )
+
+            CyanActionButton(
+                text = "Create Point-in-Time Snapshot",
+                onClick = onCreateBackup,
+                icon = Icons.Default.Backup,
+                testTag = "create_backup_snapshot_button"
+            )
 
             Row(
                 modifier = Modifier
@@ -580,7 +569,7 @@ private fun AutomatedBackupsPanel(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "Automated Pre-Change & Scheduled Backups",
                         color = HighContrastWhite,
@@ -588,11 +577,12 @@ private fun AutomatedBackupsPanel(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = "Automatically snapshots database state before resource teardown or major scaling",
+                        text = "Snapshots database state before resource teardown or major scaling",
                         color = MutedSlate,
                         fontSize = 12.sp
                     )
                 }
+                Spacer(modifier = Modifier.width(8.dp))
                 Switch(
                     checked = uiState.isAutoBackupEnabled,
                     onCheckedChange = onToggleAutoBackup,
@@ -605,54 +595,64 @@ private fun AutomatedBackupsPanel(
             }
 
             backups.forEach { snap ->
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(8.dp))
                         .background(DeepCharcoalBg)
                         .border(1.dp, SlateBorder, RoundedCornerShape(8.dp))
                         .padding(14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "${snap.snapshotCode} • ${snap.environment} (${snap.status})",
-                            color = ElectricCyan,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = JetBrainsMonoFontFamily
-                        )
-                        Text(
-                            text = "${snap.triggerType} • ${snap.modulesCount} modules • $${String.format(Locale.US, "%.2f", snap.totalMonthlyCostSnapshot)}/mo • ${snap.sizeKb} KB",
-                            color = HighContrastWhite,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "SHA-256: ${snap.sha256Checksum}",
-                            color = EmeraldSafe,
-                            fontSize = 11.sp,
-                            fontFamily = JetBrainsMonoFontFamily
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { onRestoreBackup(snap) },
-                        border = BorderStroke(1.dp, ElectricCyan),
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.testTag("restore_snapshot_${snap.snapshotCode}")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Restore,
-                            contentDescription = null,
-                            tint = ElectricCyan
-                        )
-                        Text(
-                            text = "Restore",
-                            color = ElectricCyan,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(start = 6.dp)
-                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "${snap.snapshotCode} • ${snap.environment} (${snap.status})",
+                                color = ElectricCyan,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = JetBrainsMonoFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = "${snap.triggerType} • ${snap.modulesCount} modules • $${String.format(Locale.US, "%.2f", snap.totalMonthlyCostSnapshot)}/mo",
+                                color = HighContrastWhite,
+                                fontSize = 12.sp
+                            )
+                            Text(
+                                text = "SHA-256: ${snap.sha256Checksum}",
+                                color = EmeraldSafe,
+                                fontSize = 11.sp,
+                                fontFamily = JetBrainsMonoFontFamily
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedButton(
+                            onClick = { onRestoreBackup(snap) },
+                            border = BorderStroke(1.dp, ElectricCyan),
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.testTag("restore_snapshot_${snap.snapshotCode}")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Restore,
+                                contentDescription = null,
+                                tint = ElectricCyan,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Restore",
+                                color = ElectricCyan,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
+                            )
+                        }
                     }
                 }
             }

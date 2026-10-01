@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.local.IaCModuleEntity
@@ -43,8 +44,6 @@ import com.example.ui.components.CyanActionButton
 import com.example.ui.theme.AmberWarning
 import com.example.ui.theme.DeepCharcoalBg
 import com.example.ui.theme.ElectricCyan
-import com.example.ui.theme.ElectricCyanDim
-import com.example.ui.theme.EmeraldDim
 import com.example.ui.theme.EmeraldSafe
 import com.example.ui.theme.HighContrastWhite
 import com.example.ui.theme.JetBrainsMonoFontFamily
@@ -70,7 +69,7 @@ fun ClusterHealthScreen(
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // 1. Real-Time Kubernetes Telemetry Canvas Chart
+        // 1. Real-Time Kubernetes & Device Kernel Telemetry Canvas Chart
         Surface(
             color = SlateCardSurface,
             shape = RoundedCornerShape(12.dp),
@@ -83,25 +82,17 @@ fun ClusterHealthScreen(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Real-Time Kubernetes Cluster Telemetry (${uiState.selectedEnvironment.displayName})",
-                            color = HighContrastWhite,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Live WebSocket stream • Cyan = CPU Utilization (%) • Emerald = Memory Allocation (%)",
-                            color = MutedSlate,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                Text(
+                    text = "Real-Time Cluster & Device Kernel Telemetry (${uiState.selectedEnvironment.displayName})",
+                    color = HighContrastWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Cyan = CPU Load (%) • Emerald = Real Device & Cluster Memory Utilization (%)",
+                    color = MutedSlate,
+                    fontSize = 12.sp
+                )
 
                 Box(
                     modifier = Modifier
@@ -118,7 +109,6 @@ fun ClusterHealthScreen(
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val w = size.width
                         val h = size.height
-                        // Horizontal grid lines
                         for (i in 0..4) {
                             val y = h * (i / 4f)
                             drawLine(
@@ -180,7 +170,7 @@ fun ClusterHealthScreen(
             }
         }
 
-        // 2. High-Load Stress Test & Asynchronous Room DB Performance Engine
+        // 2. High-Load Stress Test & Asynchronous Room DB Performance Engine (Stacked button so zero text clipping!)
         Surface(
             color = SlateCardSurface,
             shape = RoundedCornerShape(12.dp),
@@ -194,36 +184,29 @@ fun ClusterHealthScreen(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "High-Load Concurrency & Async Database Stress Engine",
-                            color = HighContrastWhite,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Verifies lock-free asynchronous Room I/O & coroutine backpressure under heavy load conditions.",
-                            color = MutedSlate,
-                            fontSize = 12.sp
-                        )
-                    }
-                    CyanActionButton(
-                        text = "Run Stress Load (180x)",
-                        onClick = onRunHighLoadBenchmark,
-                        isLoading = bench.isRunning,
-                        icon = Icons.Default.Speed,
-                        testTag = "run_stress_benchmark_button"
-                    )
-                }
+                Text(
+                    text = "High-Load Concurrency & Async Database Stress Engine",
+                    color = HighContrastWhite,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Verifies lock-free asynchronous Room I/O & coroutine backpressure under heavy load conditions.",
+                    color = MutedSlate,
+                    fontSize = 12.sp
+                )
+
+                CyanActionButton(
+                    text = "Run Stress Load Benchmark (180x Async Ops)",
+                    onClick = onRunHighLoadBenchmark,
+                    isLoading = bench.isRunning,
+                    icon = Icons.Default.Speed,
+                    testTag = "run_stress_benchmark_button"
+                )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     BenchmarkStatBox(
                         label = "Throughput",
@@ -232,14 +215,14 @@ fun ClusterHealthScreen(
                         modifier = Modifier.weight(1f)
                     )
                     BenchmarkStatBox(
-                        label = "p95 / p99 Latency",
-                        value = "${bench.p95LatencyMs} / ${bench.p99LatencyMs} ms",
+                        label = "p95 / p99",
+                        value = "${bench.p95LatencyMs}/${bench.p99LatencyMs}ms",
                         color = EmeraldSafe,
                         modifier = Modifier.weight(1f)
                     )
                     BenchmarkStatBox(
-                        label = "Workers / Score",
-                        value = "${bench.concurrentWorkers} • ${bench.memoryEfficiencyScore}%",
+                        label = "Efficiency",
+                        value = "${bench.memoryEfficiencyScore}%",
                         color = VioletAccent,
                         modifier = Modifier.weight(1f)
                     )
@@ -289,7 +272,8 @@ fun ClusterHealthScreen(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.weight(1f)
                             ) {
                                 Box(
                                     modifier = Modifier
@@ -302,21 +286,26 @@ fun ClusterHealthScreen(
                                     color = HighContrastWhite,
                                     fontSize = 14.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = JetBrainsMonoFontFamily
-                                )
-                                Text(
-                                    text = "${node.zone} • ${node.instanceType} • ${node.role}",
-                                    color = MutedSlate,
-                                    fontSize = 12.sp
+                                    fontFamily = JetBrainsMonoFontFamily,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                             Text(
-                                text = "${node.activePods}/${node.maxPods} pods • ${node.networkMbps} Mbps",
+                                text = "${node.activePods}/${node.maxPods} pods",
                                 color = ElectricCyan,
                                 fontSize = 12.sp,
                                 fontFamily = JetBrainsMonoFontFamily
                             )
                         }
+
+                        Text(
+                            text = "${node.zone} • ${node.instanceType} • ${node.role} • ${node.networkMbps} Mbps",
+                            color = MutedSlate,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -379,14 +368,22 @@ private fun BenchmarkStatBox(
             .border(1.dp, SlateBorder, RoundedCornerShape(8.dp))
             .padding(12.dp)
     ) {
-        Text(text = label, color = MutedSlate, fontSize = 11.sp)
+        Text(
+            text = label,
+            color = MutedSlate,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = value,
             color = color,
-            fontSize = 15.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            fontFamily = JetBrainsMonoFontFamily
+            fontFamily = JetBrainsMonoFontFamily,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -423,32 +420,25 @@ fun FinOpsAnalyticsScreen(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "FinOps Cloud Spend & Quota Governance (${uiState.selectedEnvironment.displayName})",
-                            color = HighContrastWhite,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Current Spend: $${String.format(Locale.US, "%.2f", metrics.monthly_cost)}/mo vs Budget Limit: $${String.format(Locale.US, "%.2f", budget)}/mo",
-                            color = EmeraldSafe,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    CyanActionButton(
-                        text = "Apply Right-Sizing",
-                        onClick = onOptimizeFinOps,
-                        icon = Icons.Default.AutoGraph,
-                        testTag = "finops_apply_rightsizing_button"
-                    )
-                }
+                Text(
+                    text = "FinOps Cloud Spend & Quota Governance (${uiState.selectedEnvironment.displayName})",
+                    color = HighContrastWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Current Spend: $${String.format(Locale.US, "%.2f", metrics.monthly_cost)}/mo vs Budget Limit: $${String.format(Locale.US, "%.2f", budget)}/mo",
+                    color = EmeraldSafe,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+
+                CyanActionButton(
+                    text = "Apply FinOps Right-Sizing ($395/mo Target)",
+                    onClick = onOptimizeFinOps,
+                    icon = Icons.Default.AutoGraph,
+                    testTag = "finops_apply_rightsizing_button"
+                )
 
                 LinearProgressIndicator(
                     progress = { utilizationRatio },
@@ -483,16 +473,20 @@ fun FinOpsAnalyticsScreen(
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "${mod.moduleName} (${mod.provider})",
+                                text = mod.moduleName,
                                 color = HighContrastWhite,
                                 fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
                             )
                             Text(
-                                text = String.format(Locale.US, "$%.2f / mo (%d%%)", mod.monthlyCostUsd, (share * 100).toInt()),
+                                text = String.format(Locale.US, "$%.2f/mo (%d%%)", mod.monthlyCostUsd, (share * 100).toInt()),
                                 color = ElectricCyan,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,

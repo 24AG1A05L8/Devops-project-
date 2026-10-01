@@ -8,7 +8,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -50,6 +49,7 @@ import com.example.domain.model.DevOpsSection
 import com.example.ui.components.CompactSectionTabStrip
 import com.example.ui.components.DevOpsSidebar
 import com.example.ui.components.DevOpsTopNavbar
+import com.example.ui.screens.AiCopilotScreen
 import com.example.ui.screens.BlueprintExplorerScreen
 import com.example.ui.screens.ClusterHealthScreen
 import com.example.ui.screens.DashboardScreen
@@ -57,6 +57,7 @@ import com.example.ui.screens.FinOpsAnalyticsScreen
 import com.example.ui.screens.InfrastructureScreen
 import com.example.ui.screens.PipelinesScreen
 import com.example.ui.screens.SecurityRbacAuditScreen
+import com.example.ui.screens.SettingsAndGitHubScreen
 import com.example.ui.theme.CrimsonDanger
 import com.example.ui.theme.CrimsonDim
 import com.example.ui.theme.DeepCharcoalBg
@@ -97,7 +98,6 @@ fun DevOpsCoreApp(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // BackHandler for secondary screens returning to Dashboard
     BackHandler(enabled = uiState.activeSection != DevOpsSection.DASHBOARD) {
         viewModel.selectSection(DevOpsSection.DASHBOARD)
     }
@@ -112,7 +112,6 @@ fun DevOpsCoreApp(
 
         val mainContent: @Composable () -> Unit = {
             Column(modifier = Modifier.fillMaxSize()) {
-                // 1. Global Navigation Top-Bar (Fixed 64px style with Env Dropdown, RBAC Role, and System Health Badge)
                 DevOpsTopNavbar(
                     selectedEnvironment = uiState.selectedEnvironment,
                     onEnvironmentSelected = viewModel::selectEnvironment,
@@ -124,7 +123,6 @@ fun DevOpsCoreApp(
                     }
                 )
 
-                // Compact quick-navigation tab strip on handheld screens
                 if (isCompact) {
                     CompactSectionTabStrip(
                         activeSection = uiState.activeSection,
@@ -133,7 +131,6 @@ fun DevOpsCoreApp(
                     HorizontalDivider(thickness = 1.dp, color = SlateBorder)
                 }
 
-                // Live Status / RBAC Policy Alert Banner
                 AnimatedVisibility(visible = uiState.statusBannerMessage != null) {
                     val msg = uiState.statusBannerMessage ?: ""
                     val isErr = uiState.isBannerError
@@ -180,7 +177,6 @@ fun DevOpsCoreApp(
                     }
                 }
 
-                // 2. Main Body Area (Sidebar on Wide Screens + Active Section Content)
                 Row(modifier = Modifier.fillMaxSize()) {
                     if (!isCompact) {
                         DevOpsSidebar(
@@ -208,7 +204,16 @@ fun DevOpsCoreApp(
                                 onOptimizeFinOps = viewModel::restoreOptimizedBaseline,
                                 onCommitShaChange = viewModel::updateCommitSha,
                                 onToggleWebSocket = viewModel::toggleWebSocketLive,
+                                onRefreshLiveProbes = viewModel::refreshRealWorldProbes,
                                 onNavigateSection = viewModel::selectSection
+                            )
+
+                            DevOpsSection.AI_COPILOT -> AiCopilotScreen(
+                                uiState = uiState,
+                                onSelectModel = viewModel::selectGeminiModel,
+                                onPromptChange = viewModel::updateAiPromptInput,
+                                onAskCopilot = viewModel::askAiCopilot,
+                                onApplyFinOpsOptimization = viewModel::restoreOptimizedBaseline
                             )
 
                             DevOpsSection.INFRASTRUCTURE -> InfrastructureScreen(
@@ -258,6 +263,17 @@ fun DevOpsCoreApp(
                                 uiState = uiState,
                                 metrics = metrics,
                                 costSim = costSim
+                            )
+
+                            DevOpsSection.SETTINGS -> SettingsAndGitHubScreen(
+                                uiState = uiState,
+                                onCustomHttpProbeUrlChange = viewModel::updateCustomHttpProbeUrl,
+                                onRefreshLiveProbes = viewModel::refreshRealWorldProbes,
+                                onGitHubRepoSlugChange = viewModel::updateGitHubRepoSlugInput,
+                                onFetchGitHubRepo = viewModel::fetchLiveGitHubRepoInfo,
+                                onCustomWsUrlChange = viewModel::updateCustomWsUrl,
+                                onConnectCustomWs = viewModel::connectCustomWebSocket,
+                                onToggleAutoBackup = viewModel::toggleAutoBackup
                             )
                         }
                     }

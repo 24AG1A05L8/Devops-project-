@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -23,11 +24,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backup
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.Icon
@@ -43,11 +45,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
@@ -91,9 +94,11 @@ fun DashboardScreen(
     onOptimizeFinOps: () -> Unit,
     onCommitShaChange: (String) -> Unit,
     onToggleWebSocket: (Boolean) -> Unit,
+    onRefreshLiveProbes: () -> Unit,
     onNavigateSection: (DevOpsSection) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val scrollState = rememberScrollState()
     val budgetPercentUnder = ((1.0 - (metrics.monthly_cost / uiState.selectedEnvironment.monthlyBudgetLimit)) * 100)
         .toInt()
@@ -104,7 +109,7 @@ fun DashboardScreen(
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         // 1. Enterprise Command Center Hero Banner
         Surface(
@@ -118,7 +123,7 @@ fun DashboardScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(148.dp)
+                    .height(156.dp)
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.img_devops_hero),
@@ -132,9 +137,9 @@ fun DashboardScreen(
                         .background(
                             Brush.horizontalGradient(
                                 colors = listOf(
-                                    DeepCharcoalBg.copy(alpha = 0.94f),
-                                    DeepCharcoalBg.copy(alpha = 0.80f),
-                                    DeepCharcoalBg.copy(alpha = 0.45f)
+                                    DeepCharcoalBg.copy(alpha = 0.95f),
+                                    DeepCharcoalBg.copy(alpha = 0.82f),
+                                    DeepCharcoalBg.copy(alpha = 0.50f)
                                 )
                             )
                         )
@@ -145,9 +150,9 @@ fun DashboardScreen(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -160,7 +165,8 @@ fun DashboardScreen(
                                 text = "ENV: ${uiState.selectedEnvironment.displayName.uppercase(Locale.US)}",
                                 color = ElectricCyan,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                         Box(
@@ -170,26 +176,31 @@ fun DashboardScreen(
                                 .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = "WS STREAM: ${if (uiState.isWebSocketLive) "LIVE" else "PAUSED"}",
+                                text = "LIVE TELEMETRY: ${if (uiState.isWebSocketLive) "ACTIVE" else "PAUSED"}",
                                 color = EmeraldSafe,
                                 fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         }
                     }
 
                     Column {
                         Text(
-                            text = "Cost & Security Control Plane",
+                            text = "Cost, Security & AI Control Plane",
                             color = HighContrastWhite,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Zero-Trust RBAC (${uiState.currentRole.roleName}) • Real-Time WebSocket Telemetry • Async Room Audit & Backups",
+                            text = "Live Cloud Probes • Gemini AI Copilot • Zero-Trust RBAC • SHA-256 Audit & Backups",
                             color = MutedSlate,
-                            fontSize = 13.sp
+                            fontSize = 12.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -291,53 +302,40 @@ fun DashboardScreen(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Central Console: Interactive Resource Provisioning Area",
-                            color = HighContrastWhite,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Execute CI/CD pipelines, provision Terraform modules, or teardown ephemeral resources with RBAC & auto-backup protection.",
-                            color = MutedSlate,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-
-                // Target Commit & Cost Delta Summary Bar
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = uiState.commitShaInput,
-                        onValueChange = onCommitShaChange,
-                        label = { Text("Target Git Commit SHA", color = MutedSlate) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = ElectricCyan,
-                            unfocusedBorderColor = SlateBorder,
-                            focusedTextColor = HighContrastWhite,
-                            unfocusedTextColor = HighContrastWhite,
-                            focusedContainerColor = DeepCharcoalBg,
-                            unfocusedContainerColor = DeepCharcoalBg
-                        ),
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("commit_sha_input")
+                Column {
+                    Text(
+                        text = "Central Console: Interactive Resource Provisioning Area",
+                        color = HighContrastWhite,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Execute CI/CD pipelines, provision Terraform modules, consult AI Copilot, or teardown resources with RBAC & auto-backup protection.",
+                        color = MutedSlate,
+                        fontSize = 13.sp
                     )
                 }
 
-                // Primary & Secondary Actionable Interactive Buttons (Part 1 Section 4)
+                OutlinedTextField(
+                    value = uiState.commitShaInput,
+                    onValueChange = onCommitShaChange,
+                    label = { Text("Target Git Commit SHA (Synced with GitHub API)", color = MutedSlate) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ElectricCyan,
+                        unfocusedBorderColor = SlateBorder,
+                        focusedTextColor = HighContrastWhite,
+                        unfocusedTextColor = HighContrastWhite,
+                        focusedContainerColor = DeepCharcoalBg,
+                        unfocusedContainerColor = DeepCharcoalBg
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("commit_sha_input")
+                )
+
+                // Clean FlowRow of Action Buttons (zero text wrapping or height mismatch!)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -377,8 +375,33 @@ fun DashboardScreen(
                         Text(
                             text = "Reset Optimized ($395)",
                             color = EmeraldSafe,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+
+                    OutlinedButton(
+                        onClick = { onNavigateSection(DevOpsSection.AI_COPILOT) },
+                        shape = RoundedCornerShape(6.dp),
+                        border = BorderStroke(1.dp, ElectricCyan),
+                        modifier = Modifier
+                            .height(48.dp)
+                            .testTag("open_ai_copilot_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = ElectricCyan,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Ask AI Copilot",
+                            color = ElectricCyan,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
                         )
                     }
                 }
@@ -394,40 +417,51 @@ fun DashboardScreen(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         envModules.forEach { mod ->
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(DeepCharcoalBg)
                                     .border(1.dp, SlateBorder, RoundedCornerShape(8.dp))
                                     .padding(horizontal = 14.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
                                         text = mod.moduleName,
                                         color = HighContrastWhite,
                                         fontSize = 14.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        fontFamily = JetBrainsMonoFontFamily
+                                        fontFamily = JetBrainsMonoFontFamily,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
                                     )
-                                    Text(
-                                        text = "${mod.provider} • ${mod.replicas} replicas • ${mod.cpuCores} vCPU / ${mod.memoryGb}GB",
-                                        color = MutedSlate,
-                                        fontSize = 12.sp
-                                    )
-                                }
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = String.format(Locale.US, "$%.2f/mo", mod.monthlyCostUsd),
                                         color = if (mod.status == "TERMINATED") MutedSlate else ElectricCyan,
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = JetBrainsMonoFontFamily
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${mod.provider} • ${mod.replicas}x • ${mod.cpuCores} vCPU / ${mod.memoryGb}GB",
+                                        color = MutedSlate,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
                                     )
                                     Box(
                                         modifier = Modifier
@@ -436,7 +470,7 @@ fun DashboardScreen(
                                                 if (mod.status == "TERMINATED") CrimsonDanger.copy(alpha = 0.2f)
                                                 else EmeraldDim
                                             )
-                                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                                            .padding(horizontal = 8.dp, vertical = 2.dp)
                                     ) {
                                         Text(
                                             text = mod.status,
@@ -453,7 +487,118 @@ fun DashboardScreen(
             }
         }
 
-        // 4. Real-Time WebSocket Telemetry Feed + Enterprise Reliability & Security Quick Cards
+        // 4. Real-World Live Cloud Probes & Device Hardware Telemetry Card
+        Surface(
+            color = SlateCardSurface,
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, SlateBorder),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("real_world_probes_dashboard_card")
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Public,
+                        contentDescription = null,
+                        tint = EmeraldSafe,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Real-World Cloud Probes & Device Kernel Telemetry",
+                            color = HighContrastWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        uiState.realDeviceTelemetry?.let { hw ->
+                            Text(
+                                text = "${hw.deviceModel} (SDK ${hw.androidSdkInt}) • ${hw.cpuCores} Cores • RAM: ${hw.ramUsagePercent}% used (${hw.systemAvailableRamMb}MB free) • JVM Heap: ${hw.jvmUsedMemoryMb}MB",
+                                color = ElectricCyan,
+                                fontSize = 11.sp,
+                                fontFamily = JetBrainsMonoFontFamily
+                            )
+                        }
+                    }
+                }
+
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    CyanActionButton(
+                        text = "Ping Live Cloud Endpoints",
+                        onClick = onRefreshLiveProbes,
+                        isLoading = uiState.isProbingLiveEndpoints,
+                        icon = Icons.Default.Refresh,
+                        testTag = "dashboard_ping_cloud_button"
+                    )
+                    OutlinedButton(
+                        onClick = { onNavigateSection(DevOpsSection.SETTINGS) },
+                        border = BorderStroke(1.dp, ElectricCyan),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Text(
+                            text = "GitHub Sync & Live Links",
+                            color = ElectricCyan,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                uiState.liveEndpointProbes.forEach { probe ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(DeepCharcoalBg)
+                            .border(1.dp, SlateBorder, RoundedCornerShape(8.dp))
+                            .clickable { openExternalUrl(context, probe.url) }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = probe.name,
+                                color = HighContrastWhite,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = probe.liveDetail,
+                                color = if (probe.isHealthy) EmeraldSafe else AmberWarning,
+                                fontSize = 11.sp,
+                                fontFamily = JetBrainsMonoFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "${probe.latencyMs}ms",
+                            color = ElectricCyan,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = JetBrainsMonoFontFamily
+                        )
+                    }
+                }
+            }
+        }
+
+        // 5. Real-Time WebSocket Telemetry Feed
         Surface(
             color = SlateCardSurface,
             shape = RoundedCornerShape(12.dp),
@@ -473,7 +618,8 @@ fun DashboardScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Bolt,
@@ -486,37 +632,30 @@ fun DashboardScreen(
                                 text = "Real-Time WebSocket Event Stream",
                                 color = HighContrastWhite,
                                 fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = uiState.webSocketEndpointStatus,
                                 color = MutedSlate,
-                                fontSize = 12.sp,
-                                fontFamily = JetBrainsMonoFontFamily
+                                fontSize = 11.sp,
+                                fontFamily = JetBrainsMonoFontFamily,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = if (uiState.isWebSocketLive) "LIVE" else "PAUSED",
-                            color = if (uiState.isWebSocketLive) EmeraldSafe else AmberWarning,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Switch(
-                            checked = uiState.isWebSocketLive,
-                            onCheckedChange = onToggleWebSocket,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = DeepCharcoalBg,
-                                checkedTrackColor = EmeraldSafe
-                            ),
-                            modifier = Modifier.testTag("websocket_live_switch")
-                        )
-                    }
+                    Switch(
+                        checked = uiState.isWebSocketLive,
+                        onCheckedChange = onToggleWebSocket,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = DeepCharcoalBg,
+                            checkedTrackColor = EmeraldSafe
+                        ),
+                        modifier = Modifier.testTag("websocket_live_switch")
+                    )
                 }
 
                 Column(
@@ -529,47 +668,49 @@ fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     uiState.telemetryStream.take(5).forEach { evt ->
-                        Row(
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .clip(CircleShape)
-                                        .background(EmeraldSafe)
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(EmeraldSafe)
+                                    )
+                                    Text(
+                                        text = "[${evt.timestampFormatted}] ${evt.eventType}",
+                                        color = ElectricCyan,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = JetBrainsMonoFontFamily,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                                 Text(
-                                    text = "[${evt.timestampFormatted}]",
-                                    color = MutedSlate,
+                                    text = "${evt.latencyMs}ms",
+                                    color = EmeraldSafe,
                                     fontSize = 11.sp,
                                     fontFamily = JetBrainsMonoFontFamily
-                                )
-                                Text(
-                                    text = evt.eventType,
-                                    color = ElectricCyan,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = JetBrainsMonoFontFamily
-                                )
-                                Text(
-                                    text = evt.payload,
-                                    color = HighContrastWhite,
-                                    fontSize = 12.sp,
-                                    maxLines = 1
                                 )
                             }
                             Text(
-                                text = "${evt.latencyMs}ms",
-                                color = EmeraldSafe,
-                                fontSize = 11.sp,
-                                fontFamily = JetBrainsMonoFontFamily
+                                text = evt.payload,
+                                color = HighContrastWhite,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
@@ -577,7 +718,7 @@ fun DashboardScreen(
             }
         }
 
-        // 5. Enterprise Reliability, Audit Logging, Automated Backups & Stress Benchmark Shortcuts
+        // 6. Enterprise Reliability, Audit Logging, Automated Backups & Stress Benchmark Shortcuts
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -601,14 +742,18 @@ fun DashboardScreen(
                             text = "RBAC & Audit Trail",
                             color = HighContrastWhite,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "${recentAuditLogs.size} SHA-256 verified logs • ${backups.size} state backups ready",
+                        text = "${recentAuditLogs.size} SHA-256 logs • ${backups.size} backups",
                         color = MutedSlate,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -629,17 +774,21 @@ fun DashboardScreen(
                     ) {
                         Icon(Icons.Default.Speed, contentDescription = null, tint = EmeraldSafe)
                         Text(
-                            text = "High-Load Benchmark",
+                            text = "Stress Benchmark",
                             color = HighContrastWhite,
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp
+                            fontSize = 14.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = "Async DB p99: ${uiState.benchmarkResult.p99LatencyMs}ms • 4 K8s Nodes Ready",
+                        text = "Async DB p99: ${uiState.benchmarkResult.p99LatencyMs}ms",
                         color = MutedSlate,
-                        fontSize = 12.sp
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
