@@ -1,0 +1,6 @@
+{
+  "name": "DevOps Core",
+  "description": "Enterprise DevOps, FinOps, CI/CD Pipeline, IaC State, Cluster Health, Security Compliance, RBAC, and Audit Logging Platform.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

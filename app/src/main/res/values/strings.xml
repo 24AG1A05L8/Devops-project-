@@ -1,0 +1,25 @@
+<resources>
+    <string name="app_name">DevOps Core</string>
+    <string name="brand_title">DevOps Core</string>
+    <string name="system_status_operational">All Systems Operational</string>
+    <string name="system_status_high_load">High Load Mitigation Active</string>
+    <string name="system_status_degraded">Degraded - Policy Violation</string>
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_infrastructure">Infrastructure (IaC)</string>
+    <string name="nav_pipelines">CI/CD Pipelines</string>
+    <string name="nav_cluster">Cluster Health</string>
+    <string name="nav_finops">FinOps Analytics</string>
+    <string name="nav_security_rbac">Security, RBAC &amp; Audit</string>
+    <string name="nav_blueprint">Blueprint &amp; API</string>
+    <string name="metric_cost_title">Projected Monthly Cost</string>
+    <string name="metric_security_title">Pipeline Security Status</string>
+    <string name="metric_dora_title">Deployment Frequency</string>
+    <string name="btn_trigger_pipeline">Trigger Pipeline</string>
+    <string name="btn_deploy_infra">Deploy Infra</string>
+    <string name="btn_teardown_resources">Teardown Resources</string>
+    <string name="ws_live_stream">WebSocket Telemetry Stream</string>
+    <string name="rbac_role_label">Active RBAC Role</string>
+    <string name="audit_log_title">Immutable Security Audit Trail</string>
+    <string name="backup_center_title">Automated Backups &amp; Snapshots</string>
+    <string name="compliance_center_title">Compliance &amp; Security Monitoring</string>
+</resources>
